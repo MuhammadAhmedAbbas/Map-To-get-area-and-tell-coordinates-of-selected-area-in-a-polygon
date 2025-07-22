@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Responsive Satellite Map Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #121212;
+    }
+header {
+  position: relative;
+  background-image: linear-gradient(135deg, #1e3c72, #2a5298), url('https://source.unsplash.com/random/1600x400?satellite');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
+  color: #f0f0f0;
+  padding: 10px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center; /* Center the items horizontally */
+  align-items: center; /* Vertically center the items */
+  width: 100%;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+header img {
+  width: 50px;
+  margin-right: 15px; /* Space between image and text */
+  z-index: 2;
+}
+
+.header-text {
+  text-align: left; /* Align text to the left within the text container */
+  z-index: 2;
+}
+
+header h2, header p {
+  margin: 5px 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  animation: fadeIn 1s ease-in;
+}
+
+header h2 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+header p {
+  font-size: 1.1rem;
+  font-weight: 300;
+  opacity: 0.95;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: row-reverse;
+      transition: all 0.3s ease;
+      margin-top: 5px;
+      background-color: #181818;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    #map-wrapper {
+      flex: 0 0 60%;
+      min-height: 300px;
+      position: relative;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      min-height: 300px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      animation: fadeInMap 1s ease-in forwards;
+    }
+    @keyframes fadeInMap {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .leaflet-control {
+      background: #2a2a2a;
+      border-radius: 4px;
+      color: #f0f0f0;
+    }
+    .leaflet-control a {
+      color: #f0f0f0;
+      background: #3c3c3c;
+    }
+    #side-panel {
+      flex: 1 1 40%;
+      padding: 10px;
+      background: linear-gradient(135deg, #2a2a2a, #4a4a4a), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.1)" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,133.3C672,117,768,139,864,149.3C960,160,1056,160,1152,154.7C1248,149,1344,139,1392,133.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+      background-blend-mode: overlay;
+      overflow: auto;
+    }
+    #side-panel h3 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 15px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    #side-panel p {
+      font-size: 0.95rem;
+      color: #f0f0f0;
+      line-height: 1.8;
+      font-weight: 400;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      margin-bottom: 20px;
+    }
+    .button-container {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+    .map-button {
+      padding: 8px 12px;
+      background-color: #00aaff;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.2s ease, transform 0.2s ease;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+    }
+    .map-button:disabled {
+      background-color: #666;
+      cursor: not-allowed;
+    }
+    .map-button i {
+      margin-right: 5px;
+    }
+    .map-button:hover:not(:disabled) {
+      background-color: #0088cc;
+      transform: scale(1.05);
+    }
+    .map-button::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .map-button:hover:not(:disabled)::after {
+      opacity: 1;
+    }
+    #results-box {
+      margin-top: 20px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3c3c3c, #5c5c5c);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #f0f0f0;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    #results-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      background: linear-gradient(135deg, #4a4a4a, #6a6a6a);
+    }
+    #results-box.loading::before {
+      content: '';
+      border: 3px solid #00aaff;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      #map-wrapper {
+        flex: 0 0 auto;
+        height: 40vh;
+        min-height: 200px;
+      }
+      #side-panel {
+        flex: 1 1 auto;
+        height: auto;
+        max-height: calc(60vh - 5px);
+      }
+      #side-panel.hidden {
+        max-height: 0;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+      header h2 {
+        font-size: 1.6rem;
+      }
+      header p {
+        font-size: 0.95rem;
+      }
+      .button-container {
+        flex-direction: column;
+        gap: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        justify-content: center;
+      }
+      .map-button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z'/></svg>" alt="Map Pin">
+  <div class="header-text">
+    <h2>Satellite Map Viewer</h2>
+    
+  </div>
+</header>
+  <div class="container">
+    <div id="map-wrapper">
+      <div id="map"></div>
+      <div class="button-container">
+        <button id="select-area-btn" class="map-button" data-tooltip="Click to start drawing a polygon on the map"><i class="fas fa-draw-polygon"></i> Select Area</button>
+        <button id="download-tiff-btn" class="map-button" data-tooltip="Download a GeoTIFF (Blue, Green, Red, NIR, SWIR1, SWIR2) after selecting an area" disabled><i class="fas fa-download"></i> Download GeoTIFF</button>
+        <button id="expand-btn" class="map-button" data-tooltip="Expand the map to fullscreen or collapse it"><i class="fas fa-expand"></i> Expand</button>
+      </div>
+    </div>
+    <div id="side-panel">
+      <h3>To Know Best Crops for Your Land</h3>
+      <p>Click 'Select Area' to draw a polygon on the map to define your region of interest. Once selected, click 'Download GeoTIFF' to obtain a GeoTIFF for detailed analysis.</p>
+      <div id="results-box">
+        <i class="fas fa-seedling" style="margin-right: 10px;"></i> Click 'Select Area' to begin drawing your region
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/leaflet-geometryutil@0.10.0/src/leaflet.geometryutil.js"></script>
+  <script>
+    const map = L.map('map').setView([33.6844, 73.0479], 6);
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Tiles © Esri' }
+    ).addTo(map);
+    const labels = L.tileLayer(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Labels © Esri' }
+    ).addTo(map);
+    L.Control.geocoder().addTo(map);
+
+    // Initialize drawn items layer
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Initialize draw control
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polygon: true, // Enable polygon drawing
+        marker: false,
+        circle: false,
+        circlemarker: false,
+        polyline: false,
+        rectangle: false // Disable rectangle drawing
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true
+      }
+    });
+    map.addControl(drawControl);
+
+    // Handle drawn polygon
+    let selectedGeoJSON = null;
+    map.on(L.Draw.Event.CREATED, function (e) {
+      const layer = e.layer;
+      drawnItems.clearLayers(); // Clear previous drawings
+      drawnItems.addLayer(layer); // Add new polygon
+      selectedGeoJSON = layer.toGeoJSON(); // Store GeoJSON for API request
+
+      // Calculate and display area
+      const areaInSquareMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+      const areaInHectares = areaInSquareMeters / 10000; // Convert to hectares
+      const areaDisplay = areaInHectares < 1 ? `${(areaInSquareMeters).toFixed(2)} m²` : `${areaInHectares.toFixed(2)} ha`;
+
+      // Enable download button
+      document.getElementById('download-tiff-btn').disabled = false;
+
+      // Update results box with polygon coordinates and area
+      const coords = selectedGeoJSON.geometry.coordinates[0].map(coord => `(${coord[1].toFixed(6)}, ${coord[0].toFixed(6)})`);
+      document.getElementById('results-box').innerHTML = `
+        <i class="fas fa-seedling" style="margin-right: 10px;"></i>
+        Polygon area selected: ${coords.join(', ')}. Area: ${areaDisplay}. Click 'Download GeoTIFF' to get your 6-band image.
+      `;
+    });
+
+    // Handle edit of drawn polygon
+    map.on(L.Draw.Event.EDITED, function (e) {
+      const layers = e.layers;
+      layers.eachLayer(function (layer) {
+        selectedGeoJSON = layer.toGeoJSON();
+        const areaInSquareMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+        const areaInHectares = areaInSquareMeters / 10000; // Convert to hectares
+        const areaDisplay = areaInHectares < 1 ? `${(areaInSquareMeters).toFixed(2)} m²` : `${areaInHectares.toFixed(2)} ha`;
+
+        // Update results box with new area
+        const coords = selectedGeoJSON.geometry.coordinates[0].map(coord => `(${coord[1].toFixed(6)}, ${coord[0].toFixed(6)})`);
+        document.getElementById('results-box').innerHTML = `
+          <i class="fas fa-seedling" style="margin-right: 10px;"></i>
+          Polygon area selected: ${coords.join(', ')}. Area: ${areaDisplay}. Click 'Download GeoTIFF' to get your 6-band image.
+        `;
+      });
+    });
+
+    // Handle deletion of drawn polygon
+    map.on(L.Draw.Event.DELETED, function () {
+      selectedGeoJSON = null;
+      document.getElementById('download-tiff-btn').disabled = true;
+      document.getElementById('results-box').innerHTML = `
+        <i class="fas fa-seedling" style="margin-right: 10px;"></i>
+        Click 'Select Area' to begin drawing your region
+      `;
+    });
+
+    // Disable click-to-mark when drawing is active
+    let isDrawing = false;
+    map.on('draw:drawstart', function () {
+      isDrawing = true;
+    });
+    map.on('draw:drawstop', function () {
+      isDrawing = false;
+    });
+
+    // Marker management (only when not drawing)
+    let currentMarker = null;
+    map.on('click', function (e) {
+      if (isDrawing) return; // Ignore clicks during drawing
+      if (currentMarker) {
+        map.removeLayer(currentMarker);
+      }
+      currentMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+      currentMarker.bindPopup(`Location: ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`).openPopup();
+    });
+
+    // Select Area button functionality
+    const selectAreaBtn = document.getElementById('select-area-btn');
+    selectAreaBtn.onclick = () => {
+      map.editTools.startPolygon();
+    };
+
+    // Expand button functionality
+    const expandBtn = document.getElementById('expand-btn');
+    const mapWrapper = document.getElementById('map-wrapper');
+    const sidePanel = document.getElementById('side-panel');
+    let isExpanded = false;
+    expandBtn.onclick = () => {
+      isExpanded = !isExpanded;
+      if (isExpanded) {
+        sidePanel.classList.add('hidden');
+        mapWrapper.style.flex = '0 0 100%';
+        mapWrapper.style.height = '100%';
+        expandBtn.innerHTML = '<i class="fas fa-compress"></i> Collapse';
+      } else {
+        sidePanel.classList.remove('hidden');
+        mapWrapper.style.flex = '0 0 40%';
+        mapWrapper.style.height = '';
+        expandBtn.innerHTML = '<i class="fas fa-expand"></i> Expand';
+      }
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 300);
+    };
+
+    // Download 6-band GeoTIFF button functionality
+    const downloadTiffBtn = document.getElementById('download-tiff-btn');
+    downloadTiffBtn.onclick = async () => {
+      if (!selectedGeoJSON) {
+        alert('Please draw a polygon on the map first.');
+        return;
+      }
+
+      const resultsBox = document.getElementById('results-box');
+      resultsBox.classList.add('loading');
+      resultsBox.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 10px;"></i> Generating 6-band GeoTIFF...';
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/download", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ geometry: selectedGeoJSON.geometry })
+        });
+
+        if (!response.ok) throw new Error("Failed to download TIFF");
+        const tiffBlob = await response.blob();
+
+        // Trigger download using bounding box for filename
+        const bounds = L.geoJSON(selectedGeoJSON).getBounds();
+        const southWest = bounds.getSouthWest();
+        const northEast = bounds.getNorthEast();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(tiffBlob);
+        link.download = `satellite_area_${southWest.lat.toFixed(6)}_${southWest.lng.toFixed(6)}_${northEast.lat.toFixed(6)}_${northEast.lng.toFixed(6)}_6bands.tif`;
+        link.click();
+
+        // Update results box
+        resultsBox.classList.remove('loading');
+        const areaInSquareMeters = L.GeometryUtil.geodesicArea(drawnItems.getLayers()[0].getLatLngs()[0]);
+        const areaInHectares = areaInSquareMeters / 10000;
+        const areaDisplay = areaInHectares < 1 ? `${(areaInSquareMeters).toFixed(2)} m²` : `${areaInHectares.toFixed(2)} ha`;
+        resultsBox.innerHTML = `
+          <i class="fas fa-seedling" style="margin-right: 10px;"></i>
+          6-band GeoTIFF (Blue, Green, Red, NIR, SWIR1, SWIR2) downloaded! Area: ${areaDisplay}. Ready for AI analysis.
+        `;
+      } catch (error) {
+        console.error('Error generating GeoTIFF:', error);
+        resultsBox.classList.remove('loading');
+        resultsBox.innerHTML = `
+          <i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>
+          Error generating 6-band GeoTIFF: ${error.message}. Check server connection or input data.
+        `;
+      }
+    };
+
+    // Geolocation for initial user position
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          currentMarker = L.marker([lat, lng]).addTo(map);
+          currentMarker.bindPopup("You are here").openPopup();
+          map.setView([lat, lng], 13);
+        },
+        () => {
+          console.warn("Location access denied");
+        }
+      );
+    }
+
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+  </script>
+</body>
+</html>
